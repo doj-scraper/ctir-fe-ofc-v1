@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth as useClerkAuth } from "@clerk/nextjs";
 import {
   ArrowRight,
   BadgeCheck,
@@ -20,20 +22,24 @@ import { SectionHeader } from "@/components/section-header";
 import { SummaryPanel } from "@/components/summary-panel";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
+import { createCheckout } from "@/lib/api";
 import type { AddressFormData } from "@/lib/validation";
 
 type ShippingMethod = "standard" | "priority" | "freight";
 type PaymentMethod = "card" | "net-30" | "wire";
 
-function formatCurrency(value: number) {
+/** Format cents to USD display string */
+function formatCurrency(cents: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(value);
+  }).format(cents / 100);
 }
 
 export function CheckoutSection() {
+  const router = useRouter();
   const { user, isLoggedIn } = useAuth();
+  const { getToken } = useClerkAuth();
   const {
     guestSessionId,
     initializeGuest,
@@ -53,28 +59,32 @@ export function CheckoutSection() {
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Pre-fill from Clerk user
   useEffect(() => {
     initializeGuest();
-  }, [initializeGuest]);
+    if (user) {
+      if (user.name) setContactName(user.name);
+      if (user.email) setEmail(user.email);
+      if (user.company) setCompany(user.company);
+    }
+  }, [initializeGuest, user]);
 
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // Prices are in CENTS throughout
+  const subtotalCents = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  const shipping = useMemo(() => {
-    if (shippingMethod === "priority") return 35;
-    if (shippingMethod === "freight") return subtotal > 500 ? 0 : 85;
-    return subtotal > 500 ? 0 : 18;
-  }, [shippingMethod, subtotal]);
+  // Shipping in cents
+  const shippingCents = useMemo(() => {
+    if (shippingMethod === "priority") return 3500;
+    if (shippingMethod === "freight") return subtotalCents > 50000 ? 0 : 8500;
+    return subtotalCents > 50000 ? 0 : 1800;
+  }, [shippingMethod, subtotalCents]);
 
-  const tax = useMemo(() => subtotal * 0.0725, [subtotal]);
-  const total = subtotal + shipping + tax;
+  const taxCents = useMemo(() => Math.round(subtotalCents * 0.0725), [subtotalCents]);
+  const totalCents = subtotalCents + shippingCents + taxCents;
 
   const addressComplete =
-    !!address.street &&
-    !!address.city &&
-    !!address.state &&
-    !!address.zipCode &&
-    !!address.country;
+    !!address.street && !!address.city && !!address.state && !!address.zipCode && !!address.country;
 
   const readyToSubmit =
     items.length > 0 &&
@@ -89,7 +99,7 @@ export function CheckoutSection() {
       ? `Guest session ${guestSessionId}`
       : "Guest session initializing";
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!readyToSubmit) {
       setSubmissionError(
         "Fill the required contact and shipping fields before placing the order."
@@ -100,12 +110,36 @@ export function CheckoutSection() {
     setSubmissionError(null);
     setIsSubmitting(true);
 
-    window.setTimeout(() => {
-      const orderRef = `SO-${String(Date.now()).slice(-6)}`;
+    try {
+      let token: string | null = null;
+
+      if (isLoggedIn) {
+        token = await getToken();
+      }
+
+      // For guest checkout we pass the email; backend creates/reuses a guest User
+      const result = await createCheckout(
+        token,
+        isLoggedIn ? undefined : email
+      );
+
+      if (!result) {
+        throw new Error("No response from checkout service");
+      }
+
       clearCart();
+
+      // Redirect to success page — pass orderId and guestCustomId if present
+      const params = new URLSearchParams({ order: result.orderId });
+      if (result.guestCustomId) params.set("guest", result.guestCustomId);
+
+      router.push(`/checkout/success?${params.toString()}`);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setSubmissionError(message);
       setIsSubmitting(false);
-      window.location.assign(`/checkout/success?order=${orderRef}`);
-    }, 900);
+    }
   };
 
   const heroActions = (
@@ -124,15 +158,10 @@ export function CheckoutSection() {
       <section className="pt-24 pb-20">
         <PageHero
           eyebrow="Checkout"
-          title={
-            <>
-              LOCK IN THE <span className="text-ct-accent">ORDER</span>
-            </>
-          }
+          title={<>LOCK IN THE <span className="text-ct-accent">ORDER</span></>}
           description="Submitting the wholesale order and preparing the confirmation flow."
           actions={heroActions}
         />
-
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <PageLoadingState />
         </div>
@@ -144,11 +173,7 @@ export function CheckoutSection() {
     <section className="pt-24 pb-20">
       <PageHero
         eyebrow="Checkout"
-        title={
-          <>
-            LOCK IN THE <span className="text-ct-accent">ORDER</span>
-          </>
-        }
+        title={<>LOCK IN THE <span className="text-ct-accent">ORDER</span></>}
         description="Review quantities, capture shipping details, and confirm a clean order without leaving the storefront flow."
         actions={heroActions}
       />
@@ -157,14 +182,12 @@ export function CheckoutSection() {
         {submissionError && (
           <div className="mb-8">
             <ErrorState
-              title="Checkout validation failed"
+              title="Checkout failed"
               message={submissionError}
               onRetry={() => setSubmissionError(null)}
               retryLabel="Fix details"
               secondaryAction={
-                <Link href="/support" className="btn-secondary">
-                  Contact support
-                </Link>
+                <Link href="/support" className="btn-secondary">Contact support</Link>
               }
             />
           </div>
@@ -174,41 +197,33 @@ export function CheckoutSection() {
           <div className="mb-8">
             <EmptyState
               title="Your cart is empty."
-              description="Add compatible parts from the inventory explorer before you can place a wholesale order."
+              description="Add compatible parts from the inventory explorer before placing a wholesale order."
               icon={<ShoppingCart className="size-8" />}
               actions={
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Link href="/inventory" className="btn-primary">
-                    Return to Explorer
-                  </Link>
-                  <Link href="/quote" className="btn-secondary">
-                    Build a Quote
-                  </Link>
+                  <Link href="/inventory" className="btn-primary">Return to Explorer</Link>
+                  <Link href="/quote" className="btn-secondary">Build a Quote</Link>
                 </div>
               }
             />
-            <p className="sr-only">
-              Your cart is empty. Return to the inventory explorer to stage parts or switch to
-              quote mode.
-            </p>
           </div>
         )}
 
         <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          {/* LEFT — cart review + contact details */}
           <div className="space-y-6">
             <div className="dashboard-card p-6">
               <SectionHeader
                 eyebrow="Cart review"
                 title={`${itemCount} unit${itemCount === 1 ? "" : "s"} in the order`}
-                description="MOQ is enforced locally and quantities can be adjusted before submission."
+                description="MOQ is enforced at 5 units minimum. Quantities can be adjusted before submission."
               />
-              <p className="sr-only">{`${itemCount} unit${itemCount === 1 ? "" : "s"} staged`}</p>
 
               <div className="mt-6 space-y-4">
                 {items.length > 0 ? (
                   items.map((item) => (
                     <div
-                      key={item.sku}
+                      key={item.skuId}
                       className="rounded-2xl border border-white/10 bg-ct-bg-secondary/40 p-4"
                     >
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -220,55 +235,41 @@ export function CheckoutSection() {
                           />
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-ct-text">{item.name}</p>
-                            <p className="mt-1 font-mono text-xs text-ct-text-secondary">
-                              {item.sku}
-                            </p>
-                            <p className="mt-2 text-xs text-ct-text-secondary">
-                              MOQ {item.moq} · Wholesale part
-                            </p>
+                            <p className="mt-1 font-mono text-xs text-ct-text-secondary">{item.skuId}</p>
+                            <p className="mt-2 text-xs text-ct-text-secondary">MOQ {item.moq} · Wholesale part</p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() =>
-                              updateQuantity(item.sku, Math.max(item.quantity - 1, item.moq))
-                            }
+                            onClick={() => updateQuantity(item.skuId, Math.max(item.quantity - 1, item.moq))}
                             disabled={item.quantity <= item.moq}
                             className="h-9 w-9 rounded-md border border-white/10 text-ct-text-secondary disabled:cursor-not-allowed disabled:opacity-30"
                             aria-label={`Decrease ${item.name}`}
-                          >
-                            −
-                          </button>
-                          <span className="w-16 text-center font-mono text-sm text-ct-text">
-                            {item.quantity}
-                          </span>
+                          >−</button>
+                          <span className="w-16 text-center font-mono text-sm text-ct-text">{item.quantity}</span>
                           <button
                             type="button"
-                            onClick={() => updateQuantity(item.sku, item.quantity + 1)}
+                            onClick={() => updateQuantity(item.skuId, item.quantity + 1)}
                             className="h-9 w-9 rounded-md border border-white/10 text-ct-text-secondary"
                             aria-label={`Increase ${item.name}`}
-                          >
-                            +
-                          </button>
+                          >+</button>
                           <button
                             type="button"
-                            onClick={() => removeItem(item.sku)}
+                            onClick={() => removeItem(item.skuId)}
                             className="h-9 w-9 rounded-md border border-white/10 text-ct-text-secondary"
                             aria-label={`Remove ${item.name}`}
-                          >
-                            ×
-                          </button>
+                          >×</button>
                         </div>
                       </div>
 
                       <div className="mt-4 flex items-center justify-between gap-4">
                         <span className="text-sm text-ct-text-secondary">
-                          Stocked at bulk pricing
+                          {item.price === 0 ? "Contact for Price" : `${formatCurrency(item.price)} each`}
                         </span>
                         <span className="text-lg font-semibold text-ct-accent">
-                          {formatCurrency(item.price * item.quantity)}
+                          {item.price === 0 ? "—" : formatCurrency(item.price * item.quantity)}
                         </span>
                       </div>
                     </div>
@@ -285,7 +286,7 @@ export function CheckoutSection() {
               <SectionHeader
                 eyebrow="Shipping details"
                 title="Contact and delivery"
-                description="Guest buyers can submit the form below. Signed-in accounts can use the same flow without losing cart context."
+                description="Guest buyers can submit the form below. Signed-in accounts are pre-filled from your profile."
               />
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -293,7 +294,7 @@ export function CheckoutSection() {
                   id="contactName"
                   label="Contact name"
                   value={contactName}
-                  onChange={(event) => setContactName(event.target.value)}
+                  onChange={(e) => setContactName(e.target.value)}
                   placeholder="Your name"
                   required
                 />
@@ -301,7 +302,7 @@ export function CheckoutSection() {
                   id="company"
                   label="Company"
                   value={company}
-                  onChange={(event) => setCompany(event.target.value)}
+                  onChange={(e) => setCompany(e.target.value)}
                   placeholder="Company name"
                   required
                 />
@@ -313,7 +314,7 @@ export function CheckoutSection() {
                   type="email"
                   label="Email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
                   required
                 />
@@ -321,7 +322,7 @@ export function CheckoutSection() {
                   id="poNumber"
                   label="PO number"
                   value={poNumber}
-                  onChange={(event) => setPoNumber(event.target.value)}
+                  onChange={(e) => setPoNumber(e.target.value)}
                   placeholder="Optional"
                 />
               </div>
@@ -329,12 +330,13 @@ export function CheckoutSection() {
               <div className="mt-4">
                 <AddressForm
                   values={address}
-                  onAddressChange={(patch) => setAddress((current) => ({ ...current, ...patch }))}
+                  onAddressChange={(patch) => setAddress((cur) => ({ ...cur, ...patch }))}
                 />
               </div>
             </div>
           </div>
 
+          {/* RIGHT — summary + order method */}
           <aside className="space-y-6">
             <SummaryPanel
               title="Checkout identity"
@@ -350,12 +352,12 @@ export function CheckoutSection() {
                   value: isLoggedIn ? "Signed in" : "Guest checkout",
                   helper: isLoggedIn
                     ? "Order history will attach to the active account."
-                    : "Guest session persists locally until the order is submitted.",
+                    : "Guest session persists locally. Create an account after checkout to claim your order history.",
                 },
               ]}
               footerLabel="Session ID"
               footerValue={guestSessionId ?? "initializing"}
-              footerNote="Displayed in IBM Plex Mono to match the lab-tech UI language."
+              footerNote="Displayed in IBM Plex Mono — your unique session reference."
             />
 
             <div className="dashboard-card p-6">
@@ -366,27 +368,23 @@ export function CheckoutSection() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-ct-text-secondary mb-2">
-                    Shipping speed
-                  </label>
+                  <label className="block text-sm text-ct-text-secondary mb-2">Shipping speed</label>
                   <select
                     value={shippingMethod}
-                    onChange={(event) => setShippingMethod(event.target.value as ShippingMethod)}
+                    onChange={(e) => setShippingMethod(e.target.value as ShippingMethod)}
                     className="input-dark"
                   >
-                    <option value="standard">Standard</option>
-                    <option value="priority">Priority</option>
-                    <option value="freight">Freight</option>
+                    <option value="standard">Standard — {formatCurrency(1800)} (free over $500)</option>
+                    <option value="priority">Priority — {formatCurrency(3500)}</option>
+                    <option value="freight">Freight — {formatCurrency(8500)} (free over $500)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-ct-text-secondary mb-2">
-                    Payment terms
-                  </label>
+                  <label className="block text-sm text-ct-text-secondary mb-2">Payment terms</label>
                   <select
                     value={paymentMethod}
-                    onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}
+                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                     className="input-dark"
                   >
                     <option value="net-30">Net 30</option>
@@ -394,72 +392,37 @@ export function CheckoutSection() {
                     <option value="wire">Wire transfer</option>
                   </select>
                 </div>
-
-                <div className="rounded-2xl border border-white/10 bg-ct-bg-secondary/40 p-4 text-sm text-ct-text-secondary">
-                  {paymentMethod === "net-30"
-                    ? "Approved accounts can move on terms without card capture."
-                    : paymentMethod === "wire"
-                      ? "Wire instructions will be attached to the order confirmation."
-                      : "Card payment stays in the secure checkout path."}
-                </div>
               </div>
             </div>
 
-            <div className="dashboard-card p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Truck className="w-4 h-4 text-ct-accent" />
-                <h2 className="font-semibold text-ct-text">Totals</h2>
-              </div>
-
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-ct-text-secondary">Subtotal</span>
-                  <span className="text-ct-text">{formatCurrency(subtotal)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-ct-text-secondary">Shipping</span>
-                  <span className="text-ct-text">{formatCurrency(shipping)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-ct-text-secondary">Tax estimate</span>
-                  <span className="text-ct-text">{formatCurrency(tax)}</span>
-                </div>
-                <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                  <span className="text-ct-text-secondary">Grand total</span>
-                  <span className="text-2xl font-semibold text-ct-accent">
-                    {formatCurrency(total)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-5 flex flex-wrap gap-3">
+            <SummaryPanel
+              title="Order summary"
+              description="Wholesale totals update in real time."
+              items={[
+                { label: "Subtotal", value: formatCurrency(subtotalCents), tone: "accent" },
+                { label: "Shipping", value: shippingCents === 0 ? "Free" : formatCurrency(shippingCents) },
+                { label: "Tax (7.25%)", value: formatCurrency(taxCents) },
+                { label: "Items", value: String(itemCount) },
+              ]}
+              footerLabel="Estimated total"
+              footerValue={formatCurrency(totalCents)}
+              footerNote="Final pricing confirmed on invoice."
+              action={
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={!readyToSubmit}
-                  className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!readyToSubmit || isSubmitting}
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Place order
+                  {isSubmitting ? "Submitting…" : "Place Wholesale Order"}
+                  <ArrowRight className="h-4 w-4" />
                 </button>
-                <Link href="/support" className="btn-secondary inline-flex items-center gap-2">
-                  Help <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
+              }
+            />
 
-              <div className="mt-4 flex items-center gap-2 text-xs text-ct-text-secondary">
-                <BadgeCheck className="w-4 h-4 text-ct-accent" />
-                {readyToSubmit
-                  ? "Everything is ready for submission."
-                  : "Fill the required fields to enable order placement."}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-ct-bg-secondary/40 p-4 text-sm text-ct-text-secondary">
-              <div className="flex items-center gap-2 text-ct-text mb-2">
-                <ShieldCheck className="w-4 h-4 text-ct-accent" />
-                Review checkpoint
-              </div>
-              Payment terms, shipping speed, and cart totals are all local-first in this build.
+            <div className="flex items-center gap-2 text-xs text-ct-text-secondary">
+              <ShieldCheck className="h-4 w-4 text-ct-accent flex-shrink-0" />
+              <span>Orders are reviewed by the CellTech team before fulfillment.</span>
             </div>
           </aside>
         </div>
