@@ -20,8 +20,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: part
       ? `${part.partName} | CellTech Distributor`
       : "Part Not Found | CellTech Distributor",
-    description: part?.specifications || "Wholesale mobile repair parts.",
+    description: part
+      ? `Wholesale ${part.partName} — ${part.qualityGrade} quality. SKU: ${part.skuId}`
+      : "Wholesale mobile repair parts.",
   };
+}
+
+/**
+ * Format wholesalePrice (cents) for display.
+ * wholesalePrice === 0 → "Contact for Price" (never "$0.00")
+ */
+function formatPrice(cents: number): string {
+  if (cents === 0) return "Contact for Price";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
 }
 
 export default async function ProductPage({ params }: Props) {
@@ -33,46 +47,21 @@ export default async function ProductPage({ params }: Props) {
   if (!part) notFound();
 
   // Build the unified compatible models list the FitmentChecker and Matrix both consume
-  const allCompatibleModels: Array<{ modelNumber: string; marketingName: string }> = [];
+  const allCompatibleModels: Array<{ modelNumber: string; marketingName: string }> =
+    (part.compatibilities ?? []).map((c) => ({
+      modelNumber: c.variant.modelNumber ?? c.variant.marketingName,
+      marketingName: c.variant.marketingName,
+    }));
 
-  if (part.primaryModel) {
-    allCompatibleModels.push({
-      modelNumber: part.primaryModel,
-      marketingName: part.primaryModel,
-    });
-  }
+  const priceDisplay = formatPrice(part.wholesalePrice);
+  const isInStock = part.stockLevel > 0;
 
-  if (Array.isArray(part.compatibleModels)) {
-    for (const model of part.compatibleModels) {
-      if (!allCompatibleModels.find((m: { modelNumber: string }) => m.modelNumber === model.modelNumber)) {
-        allCompatibleModels.push({
-          modelNumber: model.modelNumber,
-          marketingName: model.marketingName,
-        });
-      }
-    }
-  }
-
-  const priceDisplay = part.price ? `$${part.price.toFixed(2)}` : "Contact for Price";
-  const isInStock = part.stock > 0;
-
-  // Parse comma-separated specifications string into key/value pairs
-  const specPairs: Array<{ label: string; value: string }> = [];
-  if (part.specifications) {
-    part.specifications.split(",").forEach((chunk: string) => {
-      const idx = chunk.indexOf(":");
-      if (idx !== -1) {
-        specPairs.push({
-          label: chunk.slice(0, idx).trim(),
-          value: chunk.slice(idx + 1).trim(),
-        });
-      } else {
-        specPairs.push({ label: chunk.trim(), value: "—" });
-      }
-    });
-  }
-  specPairs.push({ label: "Category", value: part.category });
-  specPairs.push({ label: "Quality Grade", value: part.quality || "Standard" });
+  // Build spec pairs from the backend array (label/value pairs)
+  const specPairs: Array<{ label: string; value: string }> = [
+    ...(part.specifications ?? []),
+    { label: "Category", value: part.category },
+    { label: "Quality Grade", value: part.qualityGrade },
+  ];
 
   const trustBadges = [
     { Icon: ShieldCheck, text: "Batch Verified" },
@@ -98,7 +87,7 @@ export default async function ProductPage({ params }: Props) {
             {part.category}
           </Link>
           <span className="opacity-30">/</span>
-          <span className="text-ct-text truncate max-w-[200px]">{part.partName || part.skuId}</span>
+          <span className="text-ct-text truncate max-w-[200px]">{part.partName}</span>
         </nav>
 
         {/* Main split-screen */}
@@ -122,13 +111,13 @@ export default async function ProductPage({ params }: Props) {
                 }`}
               />
               <span className="font-mono text-xs text-ct-text-secondary uppercase tracking-widest">
-                {isInStock ? `${part.stock} units in stock` : "Out of stock"}
+                {isInStock ? `${part.stockLevel} units in stock` : "Out of stock"}
               </span>
-              {part.quality && (
+              {part.qualityGrade && part.qualityGrade !== "NA" && (
                 <>
                   <span className="text-white/20">·</span>
                   <span className="font-mono text-xs text-ct-accent uppercase tracking-widest">
-                    {part.quality}
+                    {part.qualityGrade}
                   </span>
                 </>
               )}
@@ -136,7 +125,7 @@ export default async function ProductPage({ params }: Props) {
 
             {/* Title */}
             <h1 className="heading-display text-3xl lg:text-4xl text-ct-text mb-3 leading-tight">
-              {part.partName || "Unknown Part"}
+              {part.partName}
             </h1>
 
             {/* SKU pill */}
@@ -144,11 +133,6 @@ export default async function ProductPage({ params }: Props) {
               <span className="font-mono text-xs bg-ct-bg-secondary border border-white/10 px-3 py-1.5 rounded-md text-ct-accent">
                 SKU: {part.skuId}
               </span>
-              {part.primaryModel && part.primaryModel !== part.partName && (
-                <span className="font-mono text-xs text-ct-text-secondary">
-                  {part.primaryModel}
-                </span>
-              )}
             </div>
 
             {/* Price & CTA card */}
@@ -174,9 +158,9 @@ export default async function ProductPage({ params }: Props) {
 
               <AddToCartButton
                 skuId={part.skuId}
-                partName={part.partName || part.skuId}
-                price={part.price || 0}
-                stock={part.stock}
+                partName={part.partName}
+                price={part.wholesalePrice}
+                stock={part.stockLevel}
                 category={part.category}
               />
             </div>

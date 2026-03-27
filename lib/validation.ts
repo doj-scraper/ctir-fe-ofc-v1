@@ -6,13 +6,8 @@ export const emailSchema = z
   .min(1, 'Email is required')
   .email('Please enter a valid email address');
 
-// Password validation - at least 8 chars, 1 uppercase, 1 number, 1 special char
-export const passwordSchema = z
-  .string()
-  .min(8, 'Password must be at least 8 characters')
-  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-  .regex(/[0-9]/, 'Password must contain at least one number')
-  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
+// NOTE: Password validation is intentionally omitted.
+// Authentication is handled by Clerk — passwords are never processed by this app.
 
 // Phone number validation (basic international format)
 export const phoneSchema = z
@@ -58,28 +53,8 @@ export const addressSchema = z.object({
 
 export type AddressFormData = z.infer<typeof addressSchema>;
 
-// Login form validation
-export const loginSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(1, 'Password is required'),
-});
-
-export type LoginFormData = z.infer<typeof loginSchema>;
-
-// Register form validation
-export const registerSchema = z.object({
-  email: emailSchema,
-  password: passwordSchema,
-  confirmPassword: z.string(),
-  firstName: nameSchema,
-  lastName: nameSchema,
-  company: companyNameSchema,
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Passwords do not match',
-  path: ['confirmPassword'],
-});
-
-export type RegisterFormData = z.infer<typeof registerSchema>;
+// NOTE: Login and register forms are handled by Clerk UI components.
+// Do not implement custom login/register logic here.
 
 // Quote request form validation
 export const quoteRequestSchema = z.object({
@@ -95,23 +70,7 @@ export const quoteRequestSchema = z.object({
 
 export type QuoteRequestFormData = z.infer<typeof quoteRequestSchema>;
 
-// Password reset form validation
-export const resetPasswordSchema = z.object({
-  email: emailSchema,
-});
-
-export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
-
-// Set new password validation
-export const setNewPasswordSchema = z.object({
-  password: passwordSchema,
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Passwords do not match',
-  path: ['confirmPassword'],
-});
-
-export type SetNewPasswordFormData = z.infer<typeof setNewPasswordSchema>;
+// NOTE: Password reset is handled by Clerk — no custom reset flow needed.
 
 // Account settings form validation
 export const accountSettingsSchema = z.object({

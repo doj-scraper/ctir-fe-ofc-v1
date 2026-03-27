@@ -12,11 +12,12 @@ interface CartDrawerProps {
   onClose: () => void;
 }
 
-function formatCurrency(value: number) {
+/** Formats cents to USD display string */
+function formatCurrency(cents: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(value);
+  }).format(cents / 100);
 }
 
 export function CartDrawer({ open, onClose }: CartDrawerProps) {
@@ -36,6 +37,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
     }
   }, [initializeGuest, open]);
 
+  // Prices are in CENTS — divide by 100 for display
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const sessionId = guestSessionId ?? "initializing...";
@@ -92,7 +94,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
             <div className="space-y-4">
               {items.map((item) => (
                 <div
-                  key={item.sku}
+                  key={item.skuId}
                   className="rounded-2xl border border-white/10 bg-ct-bg-secondary/50 p-4"
                 >
                   <div className="flex gap-3">
@@ -108,12 +110,12 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                             {item.name}
                           </p>
                           <p className="mt-1 font-mono text-xs text-ct-text-secondary">
-                            {item.sku}
+                            {item.skuId}
                           </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => removeItem(item.sku)}
+                          onClick={() => removeItem(item.skuId)}
                           className="text-ct-text-secondary transition-colors hover:text-ct-text"
                           aria-label={`Remove ${item.name}`}
                         >
@@ -127,7 +129,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                             type="button"
                             onClick={() =>
                               updateQuantity(
-                                item.sku,
+                                item.skuId,
                                 Math.max(item.quantity - 1, item.moq)
                               )
                             }
@@ -142,7 +144,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                           </span>
                           <button
                             type="button"
-                            onClick={() => updateQuantity(item.sku, item.quantity + 1)}
+                            onClick={() => updateQuantity(item.skuId, item.quantity + 1)}
                             className="h-8 w-8 rounded-md border border-white/10 text-ct-text-secondary transition-colors hover:text-ct-text"
                             aria-label={`Increase ${item.name}`}
                           >
@@ -150,7 +152,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                           </button>
                         </div>
                         <span className="text-sm font-semibold text-ct-accent">
-                          {formatCurrency(item.price * item.quantity)}
+                          {item.price === 0 ? "Contact for Price" : formatCurrency(item.price * item.quantity)}
                         </span>
                       </div>
                     </div>

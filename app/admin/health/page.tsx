@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { fetchSystemHealth, type SystemHealth, type ServiceHealth } from '@/lib/api';
 
 const REFRESH_INTERVAL = 30_000;
@@ -14,12 +15,10 @@ function latencyColor(ms: number): string {
 function statusDotClasses(status: ServiceHealth['status']): string {
   const base = 'inline-block h-3 w-3 rounded-full';
   switch (status) {
-    case 'green':
-      return `${base} bg-emerald-500`;
-    case 'yellow':
-      return `${base} bg-yellow-400 animate-pulse`;
-    case 'red':
-      return `${base} bg-red-500 animate-pulse`;
+    case 'green': return `${base} bg-emerald-500`;
+    case 'yellow': return `${base} bg-yellow-400 animate-pulse`;
+    case 'red': return `${base} bg-red-500 animate-pulse`;
+    default: return `${base} bg-gray-500`;
   }
 }
 
@@ -82,14 +81,18 @@ function BannerSkeleton() {
 // --- Service Card ---
 
 function ServiceCard({ service }: { service: ServiceHealth }) {
+  // latencyMs is -1 when the service is DOWN (null from backend)
+  const latencyDisplay = service.latencyMs < 0 ? '—' : `${service.latencyMs}ms`;
+  const latencyClass = service.latencyMs < 0 ? 'text-red-400' : latencyColor(service.latencyMs);
+
   return (
     <div className="rounded-xl border border-gray-700/50 bg-gray-800/60 p-5 transition-colors hover:border-gray-600/60">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-gray-300">{service.name}</h3>
         <span className={statusDotClasses(service.status)} />
       </div>
-      <p className={`font-mono text-2xl font-medium ${latencyColor(service.latencyMs)}`}>
-        {service.latencyMs}ms
+      <p className={`font-mono text-2xl font-medium ${latencyClass}`}>
+        {latencyDisplay}
       </p>
       {service.message && (
         <p className="mt-1 text-xs text-gray-500">{service.message}</p>
@@ -101,6 +104,7 @@ function ServiceCard({ service }: { service: ServiceHealth }) {
 // --- Main Page ---
 
 export default function SystemHealthPage() {
+  const { getToken } = useAuth();
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -109,7 +113,9 @@ export default function SystemHealthPage() {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(false);
-    const data = await fetchSystemHealth();
+    // Pass the ADMIN Clerk token so the backend can verify the role
+    const token = await getToken().catch(() => undefined);
+    const data = await fetchSystemHealth(token ?? undefined);
     if (data) {
       setHealth(data);
       setLastRefresh(new Date());
@@ -118,7 +124,7 @@ export default function SystemHealthPage() {
       setError(true);
     }
     setLoading(false);
-  }, []);
+  }, [getToken]);
 
   useEffect(() => {
     refresh();
