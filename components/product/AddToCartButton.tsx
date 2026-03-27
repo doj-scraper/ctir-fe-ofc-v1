@@ -35,7 +35,7 @@ export function AddToCartButton({
   const handleAdd = () => {
     if (isOutOfStock) return;
     addItem({
-      sku: skuId,
+      skuId: skuId,
       name: partName,
       price,
       quantity: qty,

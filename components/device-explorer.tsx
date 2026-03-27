@@ -16,7 +16,7 @@ import {
   type HierarchyModelType,
   type HierarchyGeneration,
   type HierarchyVariant,
-  type CatalogPart,
+  type InventoryItem,
 } from '@/lib/api';
 
 // Re-export backend types under local aliases for clarity
@@ -30,10 +30,10 @@ type NavigationLevel = 'brand' | 'modelType' | 'generation' | 'variant';
 
 interface NavigationState {
   level: NavigationLevel;
-  brandId?: number;
-  modelTypeId?: number;
-  generationId?: number;
-  variantId?: number;
+  brandId?: string;
+  modelTypeId?: string;
+  generationId?: string;
+  variantId?: string;
 }
 
 /**
@@ -55,7 +55,7 @@ export function DeviceExplorer() {
   const [hierarchyError, setHierarchyError] = useState<string | null>(null);
 
   // Parts for selected variant
-  const [variantParts, setVariantParts] = useState<CatalogPart[]>([]);
+  const [variantParts, setVariantParts] = useState<InventoryItem[]>([]);
   const [partsLoading, setPartsLoading] = useState(false);
   const [recentlyAddedSku, setRecentlyAddedSku] = useState<string | null>(null);
   const { addItem } = useCart();
@@ -119,7 +119,7 @@ export function DeviceExplorer() {
   // Get current model type data
   const currentModelType = useMemo(() => {
     if (currentBrand && navigationState.modelTypeId) {
-      return currentBrand.modelTypes.find((mt) => mt.id === navigationState.modelTypeId);
+      return currentBrand.models.find((mt) => mt.id === navigationState.modelTypeId);
     }
     return undefined;
   }, [currentBrand, navigationState.modelTypeId]);
@@ -158,7 +158,7 @@ export function DeviceExplorer() {
         results.push({ type: 'brand', brand });
       }
 
-      brand.modelTypes.forEach((modelType) => {
+      brand.models.forEach((modelType) => {
         if (modelType.name.toLowerCase().includes(query)) {
           results.push({ type: 'modelType', brand, modelType });
         }
@@ -170,7 +170,7 @@ export function DeviceExplorer() {
 
           generation.variants.forEach((variant) => {
             if (
-              variant.modelNumber.toLowerCase().includes(query) ||
+              (variant.modelNumber ?? '').toLowerCase().includes(query) ||
               variant.marketingName.toLowerCase().includes(query)
             ) {
               results.push({ type: 'variant', brand, modelType, generation, variant });
@@ -246,11 +246,11 @@ export function DeviceExplorer() {
     setSearchQuery('');
   }, []);
 
-  const handleAddToCart = useCallback((part: CatalogPart) => {
+  const handleAddToCart = useCallback((part: InventoryItem) => {
     addItem({
-      sku: part.skuId,
+      skuId: part.skuId,
       name: part.partName,
-      price: part.price,
+      price: part.wholesalePrice,
       quantity: 5,
       moq: 5,
       image: '/images/product_placeholder.jpg',
@@ -466,7 +466,7 @@ export function DeviceExplorer() {
                 ))}
 
               {navigationState.level === 'modelType' &&
-                currentBrand?.modelTypes.map((modelType) => (
+                currentBrand?.models.map((modelType) => (
                   <button
                     key={modelType.id}
                     onClick={() => handleSelectModelType(modelType)}
@@ -533,13 +533,13 @@ export function DeviceExplorer() {
                 <CardHeader>
                   <CardTitle className="text-ct-accent">{currentBrand.name}</CardTitle>
                   <CardDescription>
-                    {currentBrand.modelTypes.length} model type
-                    {currentBrand.modelTypes.length !== 1 ? 's' : ''}
+                    {currentBrand.models.length} model type
+                    {currentBrand.models.length !== 1 ? 's' : ''}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    {currentBrand.modelTypes.map((mt) => (
+                    {currentBrand.models.map((mt) => (
                       <div
                         key={mt.id}
                         className="p-3 rounded-lg bg-ct-bg/50 border border-ct-text/10 text-sm text-ct-text-secondary"
@@ -588,7 +588,7 @@ export function DeviceExplorer() {
                     <CardTitle className="text-ct-accent">{currentVariant.marketingName}</CardTitle>
                     <CardDescription>
                       Model {currentVariant.modelNumber}
-                      {currentVariant.releaseYear ? ` · ${currentVariant.releaseYear}` : ''}
+                      {currentGeneration?.releaseYear ? ` · ${currentGeneration.releaseYear}` : ''}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -600,7 +600,7 @@ export function DeviceExplorer() {
                       <div className="p-3 rounded-lg bg-ct-bg/50 border border-ct-text/10">
                         <p className="text-xs text-ct-text-secondary/75 uppercase tracking-wider">Release Year</p>
                         <p className="text-sm font-semibold text-ct-text mt-1">
-                          {currentVariant.releaseYear ?? '—'}
+                          {currentGeneration?.releaseYear ?? '—'}
                         </p>
                       </div>
                     </div>
@@ -645,19 +645,19 @@ export function DeviceExplorer() {
                                   variant="outline"
                                   className={cn(
                                     'text-xs border-ct-text/20',
-                                    part.quality === 'OEM'
+                                    part.qualityGrade === 'OEM'
                                       ? 'text-ct-accent border-ct-accent/30'
                                       : 'text-ct-text-secondary'
                                   )}
                                 >
-                                  {part.quality}
+                                  {part.qualityGrade}
                                 </Badge>
                               </div>
                             </div>
                             <div className="text-right ml-3 shrink-0">
-                              {part.price > 0 ? (
+                              {part.wholesalePrice > 0 ? (
                                 <p className="text-sm font-semibold text-ct-accent">
-                                  ${(part.price / 100).toFixed(2)}
+                                  ${(part.wholesalePrice / 100).toFixed(2)}
                                 </p>
                               ) : (
                                 <p className="text-xs text-ct-text-secondary">Quote</p>
@@ -665,17 +665,17 @@ export function DeviceExplorer() {
                               <p
                                 className={cn(
                                   'text-xs mt-0.5',
-                                  part.stock > 0 ? 'text-green-400' : 'text-red-400'
+                                  part.stockLevel > 0 ? 'text-green-400' : 'text-red-400'
                                 )}
                               >
-                                {part.stock > 0 ? `${part.stock} in stock` : 'Out of stock'}
+                                {part.stockLevel > 0 ? `${part.stockLevel} in stock` : 'Out of stock'}
                               </p>
                               <Button
                                 type="button"
                                 size="sm"
                                 variant={recentlyAddedSku === part.skuId ? 'secondary' : 'default'}
                                 className="mt-3 min-w-[132px] gap-2"
-                                disabled={part.stock <= 0 || part.price <= 0}
+                                disabled={part.stockLevel <= 0 || part.wholesalePrice <= 0}
                                 onClick={() => handleAddToCart(part)}
                               >
                                 {recentlyAddedSku === part.skuId ? (

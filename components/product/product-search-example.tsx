@@ -41,7 +41,7 @@ export function ProductSearchExample() {
     if (selectedBrand) {
       const getModelsData = async () => {
         try {
-          const response = await fetchModels(parseInt(selectedBrand));
+          const response = await fetchModels(selectedBrand);
           setModels(response || []);
         } catch (error) {
           console.error('Failed to fetch models:', error);
@@ -61,8 +61,8 @@ export function ProductSearchExample() {
     setLoading(true);
     try {
       const response = await searchParts(device);
-      setParts(response.parts || []);
-      if (response.parts?.length === 0) {
+      setParts(response || []);
+      if (response.length === 0) {
         toast.info('No parts found for this device');
       }
     } catch (error) {
@@ -128,7 +128,7 @@ export function ProductSearchExample() {
               <SelectContent>
                 {models.map((model: any) => (
                   <SelectItem key={model.id} value={model.id.toString()}>
-                    {model.marketingName} ({model.modelNumber})
+                    {model.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -166,13 +166,15 @@ export function ProductSearchExample() {
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg">${part.price.toFixed(2)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Stock: {part.stock}
+                      <p className="font-bold text-lg">
+                        {part.wholesalePrice > 0 ? `$${(part.wholesalePrice / 100).toFixed(2)}` : 'Quote'}
                       </p>
-                      {part.quality && (
+                      <p className="text-sm text-muted-foreground">
+                        Stock: {part.stockLevel}
+                      </p>
+                      {part.qualityGrade && (
                         <p className="text-sm font-medium text-green-600">
-                          {part.quality}
+                          {part.qualityGrade}
                         </p>
                       )}
                     </div>

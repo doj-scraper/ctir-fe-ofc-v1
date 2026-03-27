@@ -5,25 +5,25 @@ import { DeviceExplorer } from "@/components/device-explorer";
 
 const hierarchy = [
   {
-    id: 1,
+    id: "1",
     name: "Apple",
-    modelTypes: [
+    models: [
       {
-        id: 11,
-        brandId: 1,
+        id: "11",
+        brandId: "1",
         name: "iPhone",
         generations: [
           {
-            id: 111,
+            id: "111",
             name: "14 Series",
             releaseYear: 2022,
             variants: [
               {
-                id: 1111,
-                brandId: 1,
+                id: "1111",
+                modelTypeId: "11",
+                generationId: "111",
                 modelNumber: "A2882",
                 marketingName: "iPhone 14 Pro",
-                releaseYear: 2022,
               },
             ],
           },
@@ -109,9 +109,10 @@ describe("device explorer", () => {
             skuId: "DSP-001",
             partName: "Display Assembly",
             category: "Displays",
-            price: 1250,
-            stock: 9,
-            quality: "OEM",
+            wholesalePrice: 1250,
+            stockLevel: 9,
+            qualityGrade: "OEM",
+            compatibilities: [],
           },
         ],
       })

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { searchParts } from '@/lib/api';
+import { searchParts, type InventoryItem } from '@/lib/api';
 
 interface MappedProduct {
   name: string;
@@ -13,6 +13,18 @@ interface MappedProduct {
   stock: string;
   image: string;
   category: string;
+}
+
+function mapProduct(item: InventoryItem): MappedProduct {
+  return {
+    name: item.partName,
+    sku: item.skuId,
+    price: item.wholesalePrice > 0 ? `$${(item.wholesalePrice / 100).toFixed(2)}` : 'Contact for Price',
+    moq: 5,
+    stock: item.stockLevel > 10 ? 'In Stock' : item.stockLevel > 0 ? 'Low Stock' : 'Out of Stock',
+    image: '/images/product_placeholder.jpg',
+    category: item.category,
+  };
 }
 
 export function ProductsSection() {
@@ -39,20 +51,10 @@ export function ProductsSection() {
       try {
         setIsLoading(true);
         const data = await searchParts('iPhone');
-        if (data.success) {
-          const mapped: MappedProduct[] = data.parts.map((p: any) => ({
-            name: p.partName,
-            sku: p.skuId,
-            price: p.price ? `$${p.price.toFixed(2)}` : 'Contact for Price',
-            moq: 5,
-            stock: p.stock > 10 ? 'In Stock' : p.stock > 0 ? 'Low Stock' : 'Out of Stock',
-            image: '/images/product_placeholder.jpg',
-            category: p.category,
-          }));
-          setProducts(mapped);
-        }
+        setProducts(data.map(mapProduct));
       } catch (error) {
         console.error('Failed to fetch products:', error);
+        setProducts([]);
       } finally {
         setIsLoading(false);
       }
@@ -64,16 +66,17 @@ export function ProductsSection() {
 
   const filters = ['All', 'Display', 'Battery', 'Camera', 'Charging Port'];
 
-  const filteredProducts =
-    activeFilter === 'All'
-      ? products
-      : products.filter((p) => p.category === activeFilter);
+  const filteredProducts = useMemo(
+    () =>
+      activeFilter === 'All'
+        ? products
+        : products.filter((product) => product.category === activeFilter),
+    [activeFilter, products]
+  );
 
   return (
     <section ref={sectionRef} id="catalog" className="section-flowing py-20 lg:py-32" style={{ zIndex: 30 }}>
       <div className="w-full px-6 lg:px-12">
-
-        {/* Header */}
         <div
           className={`flex flex-col lg:flex-row lg:items-end lg:justify-between mb-12 transition-all duration-700 ${
             isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
@@ -88,7 +91,6 @@ export function ProductsSection() {
             </p>
           </div>
 
-          {/* Filter chips */}
           <div className="flex flex-wrap gap-2 mt-6 lg:mt-0">
             {filters.map((filter) => (
               <button
@@ -102,7 +104,6 @@ export function ProductsSection() {
           </div>
         </div>
 
-        {/* Loading skeleton */}
         {isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -118,7 +119,6 @@ export function ProductsSection() {
           </div>
         )}
 
-        {/* Product grid — each card links to the product detail page */}
         {!isLoading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             {filteredProducts.map((product, index) => (
@@ -130,7 +130,6 @@ export function ProductsSection() {
                 }`}
                 style={{ transitionDelay: `${index * 50}ms` }}
               >
-                {/* Image area */}
                 <div className="aspect-square bg-ct-bg-secondary/50 p-4 flex items-center justify-center">
                   <img
                     src={product.image}
@@ -139,7 +138,6 @@ export function ProductsSection() {
                   />
                 </div>
 
-                {/* Card body */}
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-micro text-ct-text-secondary font-mono">
@@ -150,8 +148,8 @@ export function ProductsSection() {
                         product.stock === 'Low Stock'
                           ? 'text-amber-400 bg-amber-400/10 border-amber-400/20'
                           : product.stock === 'Out of Stock'
-                          ? 'text-red-400 bg-red-400/10 border-red-400/20'
-                          : ''
+                            ? 'text-red-400 bg-red-400/10 border-red-400/20'
+                            : ''
                       }`}
                     >
                       {product.stock}

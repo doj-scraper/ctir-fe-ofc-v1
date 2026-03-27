@@ -24,6 +24,10 @@ vi.mock("@/components/empty-state", () => ({
   ),
 }));
 
+vi.mock("@/components/device-explorer", () => ({
+  DeviceExplorer: () => <div>mock-device-explorer</div>,
+}));
+
 import InventoryPage from "@/app/inventory/page";
 
 function jsonResponse(body: unknown, ok = true) {
