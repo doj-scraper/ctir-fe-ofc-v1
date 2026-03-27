@@ -52,7 +52,7 @@ export async function fetchInventory(): Promise<InventoryItem[]> {
     return data.inventory || [];
   } catch (error) {
     console.error('Error fetching inventory:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -103,7 +103,7 @@ export async function fetchBrands(): Promise<Brand[]> {
     return data.brands || [];
   } catch (error) {
     console.error('Error fetching brands:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -123,7 +123,7 @@ export async function fetchModels(brandId?: number): Promise<Model[]> {
     return data.models || [];
   } catch (error) {
     console.error('Error fetching models:', error);
-    return [];
+    throw error;
   }
 }
 

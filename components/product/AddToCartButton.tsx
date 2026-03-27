@@ -116,7 +116,7 @@ export function AddToCartButton({
               className="flex items-center gap-2"
             >
               <Check className="w-4 h-4" />
-              Added to Bench
+        Added to Cart
             </motion.span>
           ) : (
             <motion.span
@@ -127,7 +127,7 @@ export function AddToCartButton({
               className="flex items-center gap-2"
             >
               <ShoppingCart className="w-4 h-4" />
-              {isOutOfStock ? "Out of Stock" : "Add to Bench"}
+              {isOutOfStock ? "Out of Stock" : "Add to Cart"}
             </motion.span>
           )}
         </AnimatePresence>

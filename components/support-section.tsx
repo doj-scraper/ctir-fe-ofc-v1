@@ -1,83 +1,212 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { FileText, Zap, Headphones, ArrowRight } from 'lucide-react';
+import { useState } from "react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  FileText,
+  Headphones,
+  LifeBuoy,
+  Mail,
+  MessageSquare,
+  Phone,
+  ShieldCheck,
+  Sparkles,
+  Truck,
+} from "lucide-react";
+import { PageHero } from "@/components/page-hero";
+
+const faqItems = [
+  {
+    question: "How fast do quote requests get reviewed?",
+    answer: "Clean quote lists are usually reviewed within 2–4 business hours.",
+  },
+  {
+    question: "Can I place a bulk order without signing in?",
+    answer: "Yes. Use the checkout flow as a guest, or keep the quote flow if you need review.",
+  },
+  {
+    question: "How do I confirm fitment for a part?",
+    answer: "Open a product page and use the fitment checker against the target model.",
+  },
+  {
+    question: "Where do I report a shipping issue?",
+    answer: "Use the support ticket path below or contact the team by email and phone.",
+  },
+];
+
+const supportCards = [
+  {
+    icon: Mail,
+    label: "Email",
+    value: "sales@celltech.com",
+    href: "mailto:sales@celltech.com",
+  },
+  {
+    icon: Phone,
+    label: "Phone",
+    value: "+1 (800) 555-0123",
+    href: "tel:+18005550123",
+  },
+  {
+    icon: Truck,
+    label: "Shipping desk",
+    value: "Mon–Fri, 8am–6pm ET",
+    href: "/checkout",
+  },
+];
 
 export function SupportSection() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.2 }
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
-  const links = [
-    { text: 'Screen replacement guide', icon: FileText },
-    { text: 'Battery calibration steps', icon: Zap },
-    { text: 'Connector diagram PDF', icon: FileText },
-    { text: 'Open a support ticket', icon: Headphones },
-  ];
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   return (
-    <section ref={sectionRef} id="support" className="section-pinned flex items-center" style={{ zIndex: 80 }}>
-      <div className="w-full px-6 lg:px-12">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center min-h-screen">
-          {/* Left: Image */}
-          <div 
-            className={`relative transition-all duration-700 ${
-              isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-12'
-            }`}
-          >
-            <div className="relative aspect-video rounded-2xl overflow-hidden">
-              <img 
-                src="/images/teardown_guide.jpg" 
-                alt="Teardown guide"
-                className="w-full h-full object-cover animate-drift"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-ct-bg/40 to-transparent" />
+    <section className="pt-24 pb-20">
+      <div className="max-w-7xl mx-auto px-6 lg:px-12">
+        <PageHero
+          eyebrow="Support center"
+          title={
+            <>
+              FAST <span className="text-ct-accent">HELP</span> FOR ACTIVE JOBS
+            </>
+          }
+          description="Use this hub for fitment questions, shipping updates, and order support. It is intentionally lightweight so the team can get to the right path fast."
+          actions={
+            <>
+              <Link href="/quote" className="btn-secondary">
+                Request quote
+              </Link>
+              <Link href="/dashboard" className="btn-primary">
+                Open account
+              </Link>
+            </>
+          }
+        />
+
+        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          <div className="space-y-6">
+            <div className="dashboard-card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <LifeBuoy className="w-4 h-4 text-ct-accent" />
+                <h2 className="font-semibold text-ct-text">Contact options</h2>
+              </div>
+
+              <div className="space-y-3">
+                {supportCards.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <a
+                      key={card.label}
+                      href={card.href}
+                      className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-ct-bg-secondary/40 p-4 hover:border-ct-accent/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-ct-accent/10 border border-ct-accent/20 flex items-center justify-center">
+                          <Icon className="w-5 h-5 text-ct-accent" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-ct-text-secondary uppercase tracking-widest">
+                            {card.label}
+                          </p>
+                          <p className="text-sm text-ct-text mt-1">{card.value}</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-ct-accent" />
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="dashboard-card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldCheck className="w-4 h-4 text-ct-accent" />
+                <h2 className="font-semibold text-ct-text">What we handle</h2>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  "Fitment confirmation",
+                  "Shipping status",
+                  "Backorder updates",
+                  "Account access",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-xl border border-white/10 bg-ct-bg-secondary/40 p-4 text-sm text-ct-text"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-white/10 bg-ct-bg-secondary/40 p-4 text-sm text-ct-text-secondary">
+                Response windows are shortest on weekday mornings. For tight turnarounds,
+                use the quote path and include SKU numbers.
+              </div>
             </div>
           </div>
 
-          {/* Right: Content */}
-          <div 
-            className={`transition-all duration-700 delay-200 ${
-              isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12'
-            }`}
-          >
-            <h2 className="heading-display text-3xl sm:text-4xl lg:text-5xl text-ct-text mb-4">
-              READY TO<br />
-              <span className="text-ct-accent">INSTALL</span>
-            </h2>
-            <p className="text-ct-text-secondary text-sm lg:text-base max-w-md mb-8">
-              Step-by-step guides, connector maps, and symptom checklists—so your team moves fast.
-            </p>
+          <div className="space-y-6">
+            <div className="dashboard-card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="w-4 h-4 text-ct-accent" />
+                <h2 className="font-semibold text-ct-text">Frequently asked questions</h2>
+              </div>
 
-            <div className="space-y-3">
-              {links.map((link, index) => (
-                <a 
-                  key={index}
-                  href="#"
-                  className="flex items-center gap-3 p-3 rounded-lg bg-ct-bg-secondary/50 border border-white/5 hover:border-ct-accent/30 transition-all duration-200 group"
-                >
-                  <link.icon className="w-5 h-5 text-ct-accent" />
-                  <span className="text-ct-text text-sm flex-1">{link.text}</span>
-                  <ArrowRight className="w-4 h-4 text-ct-text-secondary group-hover:text-ct-accent transition-colors" />
-                </a>
-              ))}
+              <div className="space-y-3">
+                {faqItems.map((faq, index) => {
+                  const isOpen = openFaq === index;
+                  return (
+                    <button
+                      key={faq.question}
+                      type="button"
+                      onClick={() => setOpenFaq(isOpen ? null : index)}
+                      className="w-full text-left rounded-2xl border border-white/10 bg-ct-bg-secondary/40 p-4 hover:border-ct-accent/30 transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-medium text-ct-text">{faq.question}</span>
+                        <span className="text-ct-accent text-lg leading-none">{isOpen ? "−" : "+"}</span>
+                      </div>
+                      {isOpen && (
+                        <p className="mt-3 text-sm text-ct-text-secondary leading-relaxed">
+                          {faq.answer}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="dashboard-card p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <MessageSquare className="w-4 h-4 text-ct-accent" />
+                <h2 className="font-semibold text-ct-text">Escalation paths</h2>
+              </div>
+
+              <div className="space-y-3 text-sm text-ct-text-secondary">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="w-4 h-4 text-ct-accent" />
+                  <span>Use quote review for pricing and part availability.</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Truck className="w-4 h-4 text-ct-accent" />
+                  <span>Use checkout for confirmed orders and shipping capture.</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Headphones className="w-4 h-4 text-ct-accent" />
+                  <span>Use email or phone for urgent operational issues.</span>
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href="/catalog" className="link-arrow">
+                  Browse catalog <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link href="/checkout" className="link-arrow">
+                  Checkout <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>

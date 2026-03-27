@@ -1,0 +1,28 @@
+# Project Context
+
+- **Owner:** Copilot
+- **Project:** Modern refactor of an ecommerce platform for a wholesale distributor of cellphone repair parts, using Smart SKU and a relational database. The codebase is currently a monorepo and will eventually split into separate frontend and backend repositories.
+- **Stack:** Strict TypeScript, Next.js, Tailwind CSS, TanStack Query, Zustand, Prisma, Zod, Clerk or NextAuth 5, Stripe, Neon/PostgreSQL, tRPC, Resend, S3, GitHub Actions, Vercel, Vitest, React Testing Library, Playwright or Jest, PostgreSQL full-text search, Turbopack.
+- **Created:** 2026-03-24T13:05:26Z
+
+## Learnings
+
+- Test coverage needs to follow the active surface: UI, backend, database, and deploy.
+- All `.squad/` paths resolve from the team root provided by the Coordinator.
+- The shared decision log stays append-only and is merged through Scribe.
+- **Anticipatory test planning:** Writing test plans before implementation is complete helps catch design issues early and documents expected behavior for implementers. Test stubs with `test.todo()` show pending work and can be filled in as code becomes available.
+- **Backwards compatibility testing:** When refactoring existing APIs, dedicated test suites verifying response shape preservation are critical. Snapshot tests comparing old vs new schemas prevent production outages.
+- **Test data strategy:** Minimal seed data for tests (not full production seed) reduces coupling and speeds up test execution. Each test suite should seed only what it needs using test-specific utilities.
+- **Real DB vs mocking:** Integration tests benefit from real PostgreSQL test databases (not mocked Prisma) to catch schema issues, constraint violations, and query bugs. External services (Stripe, Redis) should still be mocked.
+- **Priority-based execution:** Categorizing tests as P0/P1/P2 enables fail-fast CI pipelines where critical tests (auth, payments, data integrity) run first and block deployment immediately on failure.
+- **Schema migration risks:** The new 4-level hierarchy (Brand → ModelType → Generation → Variant) replacing flat models is a high-risk change. Tests must verify data preservation, correct relationships, and backwards-compatible query results.
+- **Price calculation edge cases:** Prices stored in cents but returned in dollars — off-by-100 errors are common. Tests must verify all conversions and order snapshots (unitPriceAtPurchase) to prevent billing issues.
+- **Specification parsing:** Migrating pipe-delimited strings to structured Specification table requires thorough edge case testing (empty strings, missing pipes, extra pipes). Parser bugs will surface in production if not caught.
+- **Enum expansion awareness:** New enums (QualityGrade + U/NA, Role + BUYER/ADMIN, OrderStatus with all states) must be validated in seed tests. Missing enum values or incorrect casing will cause runtime errors.
+- **Phase 1 dependencies (from Yen):** Schema introduces 4-level hierarchy with composite keys. CompatibilityMap switches from `id` auto-increment to composite `@@id([skuId, compatibleVariantId])`. Specification table uses normalized design (label + value columns). Tests must verify CompatibilityMap composite key uniqueness and cross-compatibility preservation across variants.
+- **Architecture concerns (from Danny):** Phase 3 endpoints MUST preserve 6 existing API response shapes exactly (price in dollars, modelName field, count/brands/models fields). Backwards compatibility test suite is non-negotiable. Price formatting (cents→dollars) must have explicit test coverage. Missing fields or wrong structure = frontend outage.
+- **MVP status (2026-03-25):** Backend is ~50% complete with 49 tests passing + 93 todo. Core infrastructure (Express, Prisma, auth service) is solid but **Clerk integration is NOT STARTED** (backend currently uses JWT; frontend uses mock data). Critical blockers: (1) Clerk credentials not yet provided, (2) test DB may be empty (seed script exists), (3) service mocks hide real DB bugs. Unblocked once: Clerk keys provided, seed runs, services unmocked.
+- **Testing approach for MVP:** Current tests mock the service layer (vi.mock), validating route structure but not database queries. To unblock MVP: (1) Flip mocks OFF, (2) test with real Prisma queries, (3) validate backwards compatibility with 6 legacy endpoints, (4) explicitly test price formatting (cents→dollars), (5) stress-test cart unique constraint. Key test files: src/__tests__/{catalog,inventory,cart,checkout,auth}.routes.test.ts and src/__tests__/{order,checkout}.service.test.ts.
+- **Frontend dependencies on backend:** Frontend has no tests (count: 0), uses mock data in UI, and Zustand authStore is not wired to real backend login. Frontend can proceed with mock data for UI polish, but integration blocked until: (1) Backend catalog endpoints return correct shape, (2) Clerk or real auth endpoint available, (3) Cart/checkout endpoints fully tested.
+- **Detailed health endpoint testing:** `GET /api/health/detailed` uses `health.service.ts` (not `lib/health.ts`). It checks 4 services: PostgreSQL (via `prisma.$queryRaw`), Redis (`getRedisClient` + `ping`), Clerk (env var check only), Stripe (`balance.retrieve`). Uses green/yellow/red status with 500ms latency threshold. Tests must mock `lib/prisma.js`, `lib/redis.js`, `lib/stripe.js` and `lib/logger.js` directly — not the `lib/health.js` functions. Test file: `src/__tests__/health-detailed.test.ts` (7 tests, all passing).
+- **Clerk dependency in health checks:** Clerk has no runtime ping — it just checks `CLERK_SECRET_KEY` env var presence. Missing key → red status. Tests must set this env var when testing non-Clerk failure scenarios, or Clerk's "red" contaminates the overall status.

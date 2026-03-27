@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Search, ChevronRight, Package, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Check, ChevronRight, Loader2, Search, AlertCircle, RefreshCw, ShoppingCart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import { useCart } from '@/hooks/useCart';
 import { cn } from '@/lib/utils';
 import {
   fetchHierarchy,
@@ -56,6 +57,8 @@ export function DeviceExplorer() {
   // Parts for selected variant
   const [variantParts, setVariantParts] = useState<CatalogPart[]>([]);
   const [partsLoading, setPartsLoading] = useState(false);
+  const [recentlyAddedSku, setRecentlyAddedSku] = useState<string | null>(null);
+  const { addItem } = useCart();
 
   // Fetch hierarchy on mount
   useEffect(() => {
@@ -181,13 +184,13 @@ export function DeviceExplorer() {
   }, [debouncedQuery, hierarchy]);
 
   const handleSelectBrand = useCallback((brand: Brand) => {
-    setNavigationState({ level: 'brand', brandId: brand.id });
+    setNavigationState({ level: 'modelType', brandId: brand.id });
     setSearchQuery('');
   }, []);
 
   const handleSelectModelType = useCallback((modelType: ModelType) => {
     setNavigationState((prev) => ({
-      level: 'modelType',
+      level: 'generation',
       brandId: prev.brandId,
       modelTypeId: modelType.id,
     }));
@@ -196,7 +199,7 @@ export function DeviceExplorer() {
 
   const handleSelectGeneration = useCallback((generation: Generation) => {
     setNavigationState((prev) => ({
-      level: 'generation',
+      level: 'variant',
       brandId: prev.brandId,
       modelTypeId: prev.modelTypeId,
       generationId: generation.id,
@@ -242,6 +245,21 @@ export function DeviceExplorer() {
     });
     setSearchQuery('');
   }, []);
+
+  const handleAddToCart = useCallback((part: CatalogPart) => {
+    addItem({
+      sku: part.skuId,
+      name: part.partName,
+      price: part.price,
+      quantity: 5,
+      moq: 5,
+      image: '/images/product_placeholder.jpg',
+    });
+    setRecentlyAddedSku(part.skuId);
+    window.setTimeout(() => {
+      setRecentlyAddedSku((current) => (current === part.skuId ? null : current));
+    }, 1500);
+  }, [addItem]);
 
   // Loading skeleton
   if (hierarchyLoading) {
@@ -652,6 +670,26 @@ export function DeviceExplorer() {
                               >
                                 {part.stock > 0 ? `${part.stock} in stock` : 'Out of stock'}
                               </p>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={recentlyAddedSku === part.skuId ? 'secondary' : 'default'}
+                                className="mt-3 min-w-[132px] gap-2"
+                                disabled={part.stock <= 0 || part.price <= 0}
+                                onClick={() => handleAddToCart(part)}
+                              >
+                                {recentlyAddedSku === part.skuId ? (
+                                  <>
+                                    <Check className="size-4" />
+                                    Added
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShoppingCart className="size-4" />
+                                    Add 5 to Cart
+                                  </>
+                                )}
+                              </Button>
                             </div>
                           </div>
                         ))}

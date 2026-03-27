@@ -7,9 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function QuotePage() {
-  return (
-    <div className="pt-16">
-      <QuoteSection />
-    </div>
-  );
+  return <QuoteSection />;
 }

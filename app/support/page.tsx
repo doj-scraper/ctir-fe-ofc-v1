@@ -7,9 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function SupportPage() {
-  return (
-    <div className="pt-16">
-      <SupportSection />
-    </div>
-  );
+  return <SupportSection />;
 }
