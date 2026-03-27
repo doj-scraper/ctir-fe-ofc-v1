@@ -20,6 +20,10 @@ function formatCurrency(cents: number) {
   }).format(cents / 100);
 }
 
+function getItemSku(item: { skuId?: string; sku?: string }) {
+  return item.skuId ?? item.sku ?? "unknown-sku";
+}
+
 export function CartDrawer({ open, onClose }: CartDrawerProps) {
   const {
     items,
@@ -27,8 +31,6 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
     initializeGuest,
     updateQuantity,
     removeItem,
-    getTotalPrice,
-    getTotalItems,
   } = useCart();
 
   useEffect(() => {
@@ -37,7 +39,6 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
     }
   }, [initializeGuest, open]);
 
-  // Prices are in CENTS — divide by 100 for display
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const sessionId = guestSessionId ?? "initializing...";
@@ -92,73 +93,72 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
             />
           ) : (
             <div className="space-y-4">
-              {items.map((item) => (
-                <div
-                  key={item.skuId}
-                  className="rounded-2xl border border-white/10 bg-ct-bg-secondary/50 p-4"
-                >
-                  <div className="flex gap-3">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="h-16 w-16 rounded-lg border border-white/10 object-cover"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-ct-text">
-                            {item.name}
-                          </p>
-                          <p className="mt-1 font-mono text-xs text-ct-text-secondary">
-                            {item.skuId}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(item.skuId)}
-                          className="text-ct-text-secondary transition-colors hover:text-ct-text"
-                          aria-label={`Remove ${item.name}`}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
+              {items.map((item) => {
+                const itemSku = getItemSku(item);
 
-                      <div className="mt-3 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
+                return (
+                  <div
+                    key={itemSku}
+                    className="rounded-2xl border border-white/10 bg-ct-bg-secondary/50 p-4"
+                  >
+                    <div className="flex gap-3">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="h-16 w-16 rounded-lg border border-white/10 object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-ct-text">
+                              {item.name}
+                            </p>
+                            <p className="mt-1 font-mono text-xs text-ct-text-secondary">
+                              {itemSku}
+                            </p>
+                          </div>
                           <button
                             type="button"
-                            onClick={() =>
-                              updateQuantity(
-                                item.skuId,
-                                Math.max(item.quantity - 1, item.moq)
-                              )
-                            }
-                            disabled={item.quantity <= item.moq}
-                            className="h-8 w-8 rounded-md border border-white/10 text-ct-text-secondary transition-colors hover:text-ct-text disabled:cursor-not-allowed disabled:opacity-30"
-                            aria-label={`Decrease ${item.name}`}
+                            onClick={() => removeItem(itemSku)}
+                            className="text-ct-text-secondary transition-colors hover:text-ct-text"
+                            aria-label={`Remove ${item.name}`}
                           >
-                            <Minus className="mx-auto h-3.5 w-3.5" />
-                          </button>
-                          <span className="w-10 text-center font-mono text-sm text-ct-text">
-                            {item.quantity}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => updateQuantity(item.skuId, item.quantity + 1)}
-                            className="h-8 w-8 rounded-md border border-white/10 text-ct-text-secondary transition-colors hover:text-ct-text"
-                            aria-label={`Increase ${item.name}`}
-                          >
-                            <Plus className="mx-auto h-3.5 w-3.5" />
+                            <X className="h-4 w-4" />
                           </button>
                         </div>
-                        <span className="text-sm font-semibold text-ct-accent">
-                          {item.price === 0 ? "Contact for Price" : formatCurrency(item.price * item.quantity)}
-                        </span>
+
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(itemSku, Math.max(item.quantity - 1, item.moq))}
+                              disabled={item.quantity <= item.moq}
+                              className="h-8 w-8 rounded-md border border-white/10 text-ct-text-secondary transition-colors hover:text-ct-text disabled:cursor-not-allowed disabled:opacity-30"
+                              aria-label={`Decrease ${item.name}`}
+                            >
+                              <Minus className="mx-auto h-3.5 w-3.5" />
+                            </button>
+                            <span className="w-10 text-center font-mono text-sm text-ct-text">
+                              {item.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(itemSku, item.quantity + 1)}
+                              className="h-8 w-8 rounded-md border border-white/10 text-ct-text-secondary transition-colors hover:text-ct-text"
+                              aria-label={`Increase ${item.name}`}
+                            >
+                              <Plus className="mx-auto h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <span className="text-sm font-semibold text-ct-accent">
+                            {item.price === 0 ? "Contact for Price" : formatCurrency(item.price * item.quantity)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

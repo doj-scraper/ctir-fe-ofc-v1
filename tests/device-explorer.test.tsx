@@ -62,7 +62,7 @@ describe("device explorer", () => {
   });
 
   it("renders the error state when no hierarchy is available", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ hierarchy: [] }));
+    fetchMock.mockResolvedValue(jsonResponse({ data: [] }));
 
     render(<DeviceExplorer />);
 
@@ -75,19 +75,19 @@ describe("device explorer", () => {
     let resolveParts: ((value: Response) => void) | null = null;
     fetchMock.mockImplementation((url: string) => {
       if (url.includes("/api/hierarchy")) {
-        return Promise.resolve(jsonResponse({ hierarchy }));
+        return Promise.resolve(jsonResponse({ data: hierarchy }));
       }
-      if (url.includes("/api/variants/1111/parts")) {
+      if (url.includes("/api/inventory/variants/1111/parts")) {
         return new Promise((resolve) => {
           resolveParts = resolve;
         });
       }
-      return Promise.resolve(jsonResponse({}));
+      return Promise.resolve(jsonResponse({ data: [] }));
     });
 
     render(<DeviceExplorer />);
 
-    await screen.findByText("Apple");
+    await screen.findByText(/Select Brand/i);
     await userEvent.type(
       screen.getByPlaceholderText("Search brands, models, generations, variants..."),
       "iPhone 14 Pro"
@@ -97,14 +97,14 @@ describe("device explorer", () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/api/variants/1111/parts"),
+        expect.stringContaining("/api/inventory/variants/1111/parts"),
         expect.anything()
       )
     );
 
     resolveParts?.(
       jsonResponse({
-        parts: [
+        data: [
           {
             skuId: "DSP-001",
             partName: "Display Assembly",

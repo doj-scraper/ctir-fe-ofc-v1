@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cartItem = {
-  sku: "SKU-001",
+  skuId: "SKU-001",
   name: "Display Assembly",
-  price: 12.5,
+  price: 1250,
   quantity: 1,
   moq: 5,
   image: "/images/product_screen.jpg",
@@ -33,7 +33,7 @@ describe("cart store", () => {
     expect(reloadedStore.getState().guestSessionId).toBe("guest-session-abc123");
     expect(reloadedStore.getState().items).toHaveLength(1);
     expect(reloadedStore.getState().items[0]).toMatchObject({
-      sku: "SKU-001",
+      skuId: "SKU-001",
       quantity: 5,
     });
   });
@@ -51,12 +51,12 @@ describe("cart store", () => {
   it("updates and removes items while preserving totals", async () => {
     const { useCartStore } = await import("@/store/cartStore");
 
-    useCartStore.getState().addItem({ ...cartItem, quantity: 6, price: 3 });
+    useCartStore.getState().addItem({ ...cartItem, quantity: 6, price: 300 });
     useCartStore.getState().updateQuantity("SKU-001", 4);
 
     expect(useCartStore.getState().items[0].quantity).toBe(5);
     expect(useCartStore.getState().getTotalItems()).toBe(5);
-    expect(useCartStore.getState().getTotalPrice()).toBe(15);
+    expect(useCartStore.getState().getTotalPrice()).toBe(1500);
 
     useCartStore.getState().removeItem("SKU-001");
     expect(useCartStore.getState().items).toHaveLength(0);

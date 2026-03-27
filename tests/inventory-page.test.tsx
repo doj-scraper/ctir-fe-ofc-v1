@@ -52,9 +52,9 @@ describe("inventory page", () => {
 
   it("shows the explorer CTA in the hero", async () => {
     fetchMock.mockImplementation((url: string) => {
-      if (url.includes("/api/inventory")) return Promise.resolve(jsonResponse({ inventory: [] }));
-      if (url.includes("/api/brands")) return Promise.resolve(jsonResponse({ brands: [] }));
-      return Promise.resolve(jsonResponse({ models: [] }));
+      if (url.includes("/api/inventory")) return Promise.resolve(jsonResponse({ data: [] }));
+      if (url.includes("/api/brands")) return Promise.resolve(jsonResponse({ data: [] }));
+      return Promise.resolve(jsonResponse({ data: [] }));
     });
 
     render(<InventoryPage />);
@@ -63,6 +63,8 @@ describe("inventory page", () => {
       screen.getByRole("link", { name: /open device explorer/i })
     ).toHaveAttribute("href", "/catalog");
     expect(screen.getByRole("link", { name: /build a quote/i })).toHaveAttribute("href", "/quote");
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
   });
 
   it("shows the loading shell first", () => {
@@ -73,24 +75,24 @@ describe("inventory page", () => {
     expect(screen.getByText("inventory-loading")).toBeInTheDocument();
   });
 
-  it("shows the error shell when loading fails", async () => {
+  it("falls back to the empty state when inventory loading fails", async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url.includes("/api/inventory")) return Promise.reject(new Error("network down"));
-      if (url.includes("/api/brands")) return Promise.resolve(jsonResponse({ brands: [] }));
-      return Promise.resolve(jsonResponse({ models: [] }));
+      if (url.includes("/api/brands")) return Promise.resolve(jsonResponse({ data: [] }));
+      return Promise.resolve(jsonResponse({ data: [] }));
     });
 
     render(<InventoryPage />);
 
-    expect(await screen.findByText("Inventory unavailable")).toBeInTheDocument();
-    expect(await screen.findByText("network down")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("No matching parts")).toBeInTheDocument());
+    expect(screen.getByText("There are no inventory items to show yet.")).toBeInTheDocument();
   });
 
   it("shows the empty state when no inventory matches", async () => {
     fetchMock.mockImplementation((url: string) => {
-      if (url.includes("/api/inventory")) return Promise.resolve(jsonResponse({ inventory: [] }));
-      if (url.includes("/api/brands")) return Promise.resolve(jsonResponse({ brands: [] }));
-      return Promise.resolve(jsonResponse({ models: [] }));
+      if (url.includes("/api/inventory")) return Promise.resolve(jsonResponse({ data: [] }));
+      if (url.includes("/api/brands")) return Promise.resolve(jsonResponse({ data: [] }));
+      return Promise.resolve(jsonResponse({ data: [] }));
     });
 
     render(<InventoryPage />);

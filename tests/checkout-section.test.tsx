@@ -15,7 +15,7 @@ describe("checkout section", () => {
     render(<CheckoutSection />);
 
     expect(screen.getAllByText(/Your cart is empty/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole("link", { name: "Back to explorer" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /Back to explorer/i })).toHaveAttribute(
       "href",
       "/inventory"
     );
@@ -23,9 +23,9 @@ describe("checkout section", () => {
 
   it("renders subtotal and cart totals from store state", () => {
     useCartStore.getState().addItem({
-      sku: "SKU-1",
+      skuId: "SKU-1",
       name: "Display",
-      price: 12.5,
+      price: 1250,
       quantity: 5,
       moq: 5,
       image: "/x.jpg",
