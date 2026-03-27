@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth as useClerkAuth } from "@clerk/nextjs";
+import { useSafeClerkAuth } from "@/lib/clerk-safe";
 import {
   ArrowRight,
   BarChart3,
@@ -59,7 +59,7 @@ function relativeDate(dateStr: string): string {
 
 export function DashboardSection() {
   const { user, isLoggedIn } = useAuth();
-  const { getToken } = useClerkAuth();
+  const { getToken } = useSafeClerkAuth();
   const { items, getTotalItems, getTotalPrice } = useCart();
 
   const [orders, setOrders] = useState<Order[]>([]);

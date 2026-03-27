@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth as useClerkAuth } from "@clerk/nextjs";
+import { useSafeClerkAuth } from "@/lib/clerk-safe";
 import {
   ArrowRight,
   BadgeCheck,
@@ -39,7 +39,7 @@ function formatCurrency(cents: number) {
 export function CheckoutSection() {
   const router = useRouter();
   const { user, isLoggedIn } = useAuth();
-  const { getToken } = useClerkAuth();
+  const { getToken } = useSafeClerkAuth();
   const {
     guestSessionId,
     initializeGuest,

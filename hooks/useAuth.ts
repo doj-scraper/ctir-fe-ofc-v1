@@ -11,13 +11,13 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useUser, useAuth as useClerkAuth } from '@clerk/nextjs';
 import { useAuthStore } from '@/store/authStore';
+import { useSafeClerkAuth, useSafeClerkUser } from '@/lib/clerk-safe';
 import { fetchUserProfile } from '@/lib/api';
 
 export function useAuth() {
-  const { user: clerkUser, isLoaded } = useUser();
-  const { getToken } = useClerkAuth();
+  const { user: clerkUser, isLoaded } = useSafeClerkUser();
+  const { getToken } = useSafeClerkAuth();
   const { user, isLoggedIn, isLoading, setUser, setLoading } = useAuthStore();
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useSafeClerkAuth } from '@/lib/clerk-safe';
 import { fetchSystemHealth, type SystemHealth, type ServiceHealth } from '@/lib/api';
 
 const REFRESH_INTERVAL = 30_000;
@@ -104,7 +104,7 @@ function ServiceCard({ service }: { service: ServiceHealth }) {
 // --- Main Page ---
 
 export default function SystemHealthPage() {
-  const { getToken } = useAuth();
+  const { getToken } = useSafeClerkAuth();
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);

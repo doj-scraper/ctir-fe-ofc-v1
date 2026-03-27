@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Sora, Inter, IBM_Plex_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { AuthProvider } from "@/components/auth-provider";
 import { Navigation } from "@/components/navigation";
 import { FooterSection } from "@/components/footer-section";
 import "./globals.css";
@@ -48,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <AuthProvider>
       <html lang="en" className={`${sora.variable} ${inter.variable} ${ibmPlexMono.variable}`}>
         <body className="antialiased">
           <div className="flex flex-col min-h-screen bg-ct-bg">
@@ -60,6 +60,6 @@ export default function RootLayout({
           </div>
         </body>
       </html>
-    </ClerkProvider>
+    </AuthProvider>
   );
 }
