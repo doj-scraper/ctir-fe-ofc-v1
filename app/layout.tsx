@@ -48,9 +48,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <AuthProvider>
-      <html lang="en" className={`${sora.variable} ${inter.variable} ${ibmPlexMono.variable}`}>
-        <body className="antialiased">
+    <html lang="en" className={`${sora.variable} ${inter.variable} ${ibmPlexMono.variable}`}>
+      <body className="antialiased">
+        <AuthProvider>
           <div className="flex flex-col min-h-screen bg-ct-bg">
             <Navigation />
             <main className="flex-1">
@@ -58,8 +58,8 @@ export default function RootLayout({
             </main>
             <FooterSection />
           </div>
-        </body>
-      </html>
-    </AuthProvider>
+        </AuthProvider>
+      </body>
+    </html>
   );
 }

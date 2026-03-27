@@ -1,27 +1,28 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
-
-const isProtectedRoute = createRouteMatcher([
-  '/dashboard(.*)',
-  '/admin(.*)',
-]);
 
 const clerkConfigured = Boolean(
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY
 );
 
-const clerkHandler = clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    await auth.protect();
-  }
-});
-
-export default function middleware(req: NextRequest, evt: NextFetchEvent) {
+export default async function middleware(req: NextRequest, evt: NextFetchEvent) {
   if (!clerkConfigured) {
     return NextResponse.next();
   }
 
-  return clerkHandler(req, evt);
+  const { clerkMiddleware, createRouteMatcher } = await import('@clerk/nextjs/server');
+
+  const isProtectedRoute = createRouteMatcher([
+    '/dashboard(.*)',
+    '/admin(.*)',
+  ]);
+
+  const handler = clerkMiddleware(async (auth, request) => {
+    if (isProtectedRoute(request)) {
+      await auth.protect();
+    }
+  });
+
+  return handler(req, evt);
 }
 
 export const config = {
