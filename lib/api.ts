@@ -4,7 +4,7 @@
  */
 
 // Use environment variable or default to Vercel deployment
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://celltech-backend.vercel.app';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://ctir-backendv1-official.vercel.app';
 
 export interface Brand {
   id: number;
