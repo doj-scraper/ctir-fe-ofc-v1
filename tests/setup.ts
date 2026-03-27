@@ -3,6 +3,15 @@ import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 
+const originalEmitWarning = process.emitWarning.bind(process);
+process.emitWarning = ((warning: string | Error, ...args: unknown[]) => {
+  const message = typeof warning === "string" ? warning : warning.message;
+  if (message.includes("--localstorage-file")) {
+    return;
+  }
+  return (originalEmitWarning as (...innerArgs: unknown[]) => void)(warning, ...args);
+}) as typeof process.emitWarning;
+
 afterEach(() => {
   cleanup();
   const globalAny = globalThis as typeof globalThis & {

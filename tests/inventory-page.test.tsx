@@ -47,6 +47,7 @@ describe("inventory page", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -76,6 +77,8 @@ describe("inventory page", () => {
   });
 
   it("falls back to the empty state when inventory loading fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
     fetchMock.mockImplementation((url: string) => {
       if (url.includes("/api/inventory")) return Promise.reject(new Error("network down"));
       if (url.includes("/api/brands")) return Promise.resolve(jsonResponse({ data: [] }));

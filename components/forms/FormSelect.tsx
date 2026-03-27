@@ -75,7 +75,7 @@ export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
             {...props}
           >
             {placeholder && (
-              <option value="" disabled selected className="text-ct-text-secondary">
+              <option value="" disabled className="text-ct-text-secondary">
                 {placeholder}
               </option>
             )}
